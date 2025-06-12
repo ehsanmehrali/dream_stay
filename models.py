@@ -4,7 +4,9 @@ from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean, Date, Enum, Numeric
 from sqlalchemy.orm import declarative_base, relationship
 
+
 Base = declarative_base()
+
 
 class User(Base):
     """
