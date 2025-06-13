@@ -14,14 +14,15 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
 def init_db():
+    """ It Creates the database. """
     Base.metadata.create_all(bind=engine)
 
 
 @contextmanager
 def get_db():
     """
-    We can create a new session to work with the database through this function.
-    Yields an object generator.
+    It creates a new session to work with the database and
+    yields an object generator (session maker).
     """
     db = SessionLocal()
     try:
