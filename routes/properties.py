@@ -1,6 +1,7 @@
 
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from sqlalchemy.exc import IntegrityError
 
 from models import Property, User
 from database import get_db
@@ -48,9 +49,14 @@ def create_property():
             location=location,
             host_id=user.id
         )
+        # IntegrityError handler (race condition)
+        try:
+            db.add(prop)
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            return jsonify({'msg': 'Duplicate property not allowed'}), 409
 
-        db.add(prop)
-        db.commit()
         return jsonify({'msg': 'Property created successfully', 'property_id': prop.id}), 201
 
 
