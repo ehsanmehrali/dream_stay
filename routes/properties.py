@@ -21,7 +21,6 @@ def create_property():
     with get_db() as db:
         user = db.query(User).get(user_id)
 
-
         if not user or user.role != 'host':
             return jsonify({'error': 'Only host can create properties'}), 403
 
@@ -32,6 +31,16 @@ def create_property():
 
         if not title or not location:
             return jsonify({'error': 'Title and location are required'}), 400
+
+        # Check for existing properties from same host
+        existing = db.query(Property).filter_by(
+            title=data['title'],
+            location=data['location'],
+            host_id=user.id
+        ).first()
+
+        if existing:
+            return jsonify({'msg': 'Property already exists'}), 409
 
         prop = Property(
             title=title,

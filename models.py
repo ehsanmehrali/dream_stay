@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean, Date, Enum, Numeric
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean, Date, Enum, Numeric, UniqueConstraint
 from sqlalchemy.orm import declarative_base, relationship
 
 
@@ -32,7 +32,10 @@ class User(Base):
 
 
 class Property(Base):
-    """ This class defines the structure of the properties table. """
+    """
+    This class defines the structure of the properties table.
+    Same host, same property title and location are prohibited.
+    """
     __tablename__ = 'properties'
 
     id = Column(Integer, primary_key=True)
@@ -42,6 +45,11 @@ class Property(Base):
     host_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     is_approved = Column(Boolean, default=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    # Prevent duplicate storage
+    __table_args__ = (
+        UniqueConstraint('title', 'location', 'host_id', name='uq_title_location_host'),
+    )
 
     # MANY TO ONE: Each property is owned by one host (user).
     host = relationship('User', back_populates='properties')
