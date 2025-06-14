@@ -42,6 +42,6 @@ def create_property():
 
         db.add(prop)
         db.commit()
-    return jsonify({'msg': 'Property created successfully', 'property_id': prop.id}), 201
+        return jsonify({'msg': 'Property created successfully', 'property_id': prop.id}), 201
 
 
