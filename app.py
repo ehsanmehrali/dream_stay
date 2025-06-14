@@ -15,6 +15,10 @@ app.register_blueprint(auth_bp)
 from routes.properties import properties_bp
 app.register_blueprint(properties_bp)
 
+# profile route (edit user's profile)
+from routes.profile import profile_bp
+app.register_blueprint(profile_bp)
+
 app.config.from_object(Config)
 jwt = JWTManager(app)
 
