@@ -19,6 +19,10 @@ app.register_blueprint(properties_bp)
 from routes.profile import profile_bp
 app.register_blueprint(profile_bp)
 
+# availability route
+from routes.availability import availability_bp
+app.register_blueprint(availability_bp)
+
 app.config.from_object(Config)
 jwt = JWTManager(app)
 
@@ -30,6 +34,7 @@ with app.app_context():
 @app.route('/')
 def home():
     return 'DreamStay API is running!'
+
 
 if __name__ == '__main__':
     app.run()
