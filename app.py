@@ -11,6 +11,10 @@ app = Flask(__name__)
 from routes.auth import auth_bp
 app.register_blueprint(auth_bp)
 
+# properties route
+from routes.properties import properties_bp
+app.register_blueprint(properties_bp)
+
 app.config.from_object(Config)
 jwt = JWTManager(app)
 
