@@ -7,6 +7,9 @@ from database import init_db
 
 app = Flask(__name__)
 
+# auth(authentication) route
+from routes.auth import auth_bp
+app.register_blueprint(auth_bp)
 
 app.config.from_object(Config)
 jwt = JWTManager(app)
