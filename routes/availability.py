@@ -1,4 +1,4 @@
-
+from crypt import methods
 from datetime import datetime
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
@@ -98,3 +98,41 @@ def update_availability(availability_id):
         db.commit()
 
         return jsonify({'msg': 'Availability updated'}), 200
+
+
+@availability_bp.route('/availability/property/<int:property_id>', methods=['GET'])
+@jwt_required()
+def get_property_availability(property_id):
+    """
+    Return list of availability records for a given property.
+    Only the host who owns the property can view them.
+    """
+    user_id = get_jwt_identity()
+
+    with get_db() as db:
+        prop = db.query(Property).filter_by(id=property_id, host_id=user_id).first()
+
+        # Property ownership verification
+        if not prop:
+            return jsonify({'error': 'Property not found or not owned by user'}), 403
+
+        # Getting availability records
+        availability_list = (
+            db.query(Availability)
+            .filter_by(property_id=property_id)
+            .order_by(Availability.date)
+            .all()
+        )
+
+        results = [
+            {
+                'id': avail.id,
+                'date': avail.date.isoformat(),
+                'price': float(avail.price),
+                'is_available': avail.is_available,
+                'is_reserved': avail.is_reserved
+            }
+            for avail in availability_list
+        ]
+
+        return jsonify(results), 200
