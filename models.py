@@ -68,7 +68,7 @@ class Availability(Base):
     price = Column(Numeric(10, 2), nullable=False)
     is_reserved = Column(Boolean, default=False, nullable=False)
     is_available = Column(Boolean, default=False, nullable=False)
-
+    is_blocked = Column(Boolean, default=False)
 
 class BookingStatus(enum.Enum):
     """ It holds the names of the three main reservation modes. """
