@@ -11,6 +11,36 @@ from database import get_db
 availability_bp = Blueprint('availability', __name__)
 
 
+def parse_valid_dates(dates_dict):
+    today = date.today()
+    valid_items = []
+    input_dates = set()
+
+    # Validate input and build valid items list
+    for date_str, item in dates_dict.items():
+        try:
+            item_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+            # Past dates are ignored.
+            if item_date < today:
+                continue  # status code 201 -> []
+            price = item.get('price')
+            # Dates without a price are ignored
+            if price is None:
+                continue
+            is_available = item.get('is_available', False)
+            valid_items.append({
+                'date_str': date_str,
+                'parsed_date': item_date,
+                'price': price,
+                'is_available': is_available
+            })
+            input_dates.add(item_date)
+        except ValueError:
+            continue
+
+    return valid_items, input_dates
+
+
 @availability_bp.route('/availability', methods=['POST'])
 @jwt_required()
 def add_availability():
@@ -41,28 +71,7 @@ def add_availability():
             return jsonify({'error': 'Property not found or not owned by user'}), 403
 
         today = date.today()
-        valid_items = []
-        input_dates = set()
-
-        # Validate input and build valid items list
-        for date_str, item in dates_dict.items():
-            try:
-                item_date = datetime.strptime(date_str, "%Y-%m-%d").date()
-                if item_date < today:
-                    continue    # status code 201 -> []
-                price = item.get('price')
-                if price is None:
-                    continue # Dates without a price are ignored
-                is_available = item.get('is_available', False)
-                valid_items.append({
-                    'date_str': date_str,
-                    'parsed_date': item_date,
-                    'price': price,
-                    'is_available': is_available
-                })
-                input_dates.add(item_date)
-            except ValueError:
-                continue
+        valid_items, input_dates = parse_valid_dates(dates_dict)
 
         # Query for check the existing dates in DB
         existing = db.query(Availability.date).filter(
