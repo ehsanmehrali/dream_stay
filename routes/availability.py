@@ -109,6 +109,58 @@ def add_availability():
 
 
 
+@availability_bp.route('/availability/<int:availability_id>', methods=['PUT'])
+@jwt_required()
+def update_availability(availability_id):
+    """
+    Allows hosts to update the availability entry (price, availability, blocked status)
+    only if the date is today or in the future and not already reserved.
+    """
+    data = request.get_json()
+    user_id = get_jwt_identity()
+
+    with get_db() as db:
+        user = db.query(User).get(user_id)
+
+        availability = db.query(Availability).get(availability_id)
+        if not availability:
+            return jsonify({'error': 'Availability not found'}), 404
+
+        # Check ownership of the related property
+        prop = db.query(Property).get(availability.property_id)
+        if not prop or prop.host_id != user.id:
+            return jsonify({'error': 'Unauthorized access to this availability'}), 403
+
+        # Disallow editing reserved dates
+        if availability.is_reserved:
+            return jsonify({'error': 'Cannot update a reserved date.'}), 400
+
+        # Disallow editing past dates
+        if availability.date < date.today():
+            return jsonify({'error': 'Cannot update past dates.'}), 400
+
+        # Validate and apply updates
+        if 'is_available' in data:
+            if not isinstance(data['is_available'], bool):
+                return jsonify({'error': 'is_available must be a boolean'}), 400
+            availability.is_available = data['is_available']
+
+        if 'is_blocked' in data:
+            if not isinstance(data['is_blocked'], bool):
+                return jsonify({'error': 'is_blocked must be a boolean'}), 400
+            availability.is_blocked = data['is_blocked']
+
+        if 'price' in data:
+            try:
+                availability.price = float(data['price'])
+            except (ValueError, TypeError):
+                return jsonify({'error': 'Invalid price format'}), 400
+
+        db.commit()
+        return jsonify({'msg': 'Availability updated successfully'}), 200
+
+
+
 
 @availability_bp.route('/availability/property/<int:property_id>', methods=['GET'])
 @jwt_required()
