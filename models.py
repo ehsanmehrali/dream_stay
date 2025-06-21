@@ -67,7 +67,7 @@ class Availability(Base):
     date = Column(Date, nullable=False)
     price = Column(Numeric(10, 2), nullable=False)
     is_reserved = Column(Boolean, default=False, nullable=False)
-    is_available = Column(Boolean, default=True, nullable=False)
+    is_available = Column(Boolean, default=False, nullable=False)
 
 
 class BookingStatus(enum.Enum):
