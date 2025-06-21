@@ -1,4 +1,5 @@
-from crypt import methods
+from datetime import date
+
 from datetime import datetime
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
@@ -14,52 +15,90 @@ availability_bp = Blueprint('availability', __name__)
 @jwt_required()
 def add_availability():
     """
-    Any user who has the host role and has created a property (is the
-    property owner) can define availability and price for different dates.
-    :return: Success msg If it was successful, otherwise error.
+    Hosts can define availability and price for different dates.
+    Accepts a property_id and a dictionary of dates where each key is a date string,
+    and the value is an object containing price and (optional) is_available.
+    Only future or today dates will be processed.
     """
     user_id = get_jwt_identity()
+    data = request.get_json()
+
+    if not data or 'property_id' not in data or 'dates' not in data:
+        return jsonify({'error': 'property_id and dates are required'}), 400
+
+    property_id = data['property_id']
+    dates_dict = data['dates']
 
     with get_db() as db:
         user = db.query(User).get(user_id)
-
+        # Check user's roll
         if user.role != 'host':
             return jsonify({'error': 'Only hosts can define availability'}), 403
 
-        data = request.get_json()
-        property_id = data.get('property_id')
-        date_str = data.get('date')
-        price = data.get('price')
-        is_available = data.get('is_available', True)
-
-        if not property_id or not date_str or not price:
-            return jsonify({'error': 'Missing required fields'}), 400
-
+        # Check Ownership
         prop = db.query(Property).filter_by(id=property_id, host_id=user.id).first()
-
         if not prop:
             return jsonify({'error': 'Property not found or not owned by user'}), 403
 
-        try:
-            date_obj = datetime.strptime(date_str, "%Y-%m-%d").date()
-        except ValueError:
-            return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
+        today = date.today()
+        valid_items = []
+        input_dates = set()
 
-        exists = db.query(Availability).filter_by(property_id=property_id, date=date_obj).first()
-        if exists:
-            return jsonify({'error': 'Availability already exists for this date'}), 409
+        # Validate input and build valid items list
+        for date_str, item in dates_dict.items():
+            try:
+                item_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+                if item_date < today:
+                    continue
+                price = item.get('price')
+                if price is None:
+                    continue
+                is_available = item.get('is_available', False)
+                valid_items.append({
+                    'date_str': date_str,
+                    'parsed_date': item_date,
+                    'price': price,
+                    'is_available': is_available
+                })
+                input_dates.add(item_date)
+            except ValueError:
+                continue
 
-        availability = Availability(
-            property_id=property_id,
-            date=date_obj,
-            price=price,
-            is_available=is_available
-        )
+        # Query for check the existing dates in DB
+        existing = db.query(Availability.date).filter(
+            Availability.property_id == property_id,
+            Availability.date.in_(input_dates)
+        ).all()
+        # Converting query result(existing) to a set.
+        existing_dates = {e.date for e in existing}
 
-        db.add(availability)
+        # Preventing duplicates
+        results = []
+        for item in valid_items:
+            if item['parsed_date'] in existing_dates:
+                results.append({
+                    'error': 'Availability already exists',
+                    'date': item['date_str']
+                })
+                continue
+
+            availability = Availability(
+                property_id=property_id,
+                date=item['parsed_date'],
+                price=item['price'],
+                is_available=item['is_available'],
+                is_blocked=item.get('is_blocked', False)
+            )
+            db.add(availability)
+            results.append({
+                'msg': 'Availability created',
+                'date': item['date_str'],
+                'is_available': item['is_available']
+            })
+
         db.commit()
+        return jsonify(results), 201
 
-    return jsonify({'msg': 'Availability added successfully'}), 201
 
 
 @availability_bp.route('/availability/<int:availability_id>', methods=['PUT'])
