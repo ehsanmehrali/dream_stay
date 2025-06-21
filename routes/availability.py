@@ -49,10 +49,10 @@ def add_availability():
             try:
                 item_date = datetime.strptime(date_str, "%Y-%m-%d").date()
                 if item_date < today:
-                    continue
+                    continue    # status code 201 -> []
                 price = item.get('price')
                 if price is None:
-                    continue
+                    continue # Dates without a price are ignored
                 is_available = item.get('is_available', False)
                 valid_items.append({
                     'date_str': date_str,
@@ -75,7 +75,7 @@ def add_availability():
         # Preventing duplicates
         results = []
         for item in valid_items:
-            if item['parsed_date'] in existing_dates:
+            if item['parsed_date'] in existing_dates: # status code 201
                 results.append({
                     'error': 'Availability already exists',
                     'date': item['date_str']
