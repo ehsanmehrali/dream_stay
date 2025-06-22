@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import datetime, date
 
 from datetime import datetime
 from flask import Blueprint, request, jsonify
@@ -109,55 +109,77 @@ def add_availability():
 
 
 
-@availability_bp.route('/availability/<int:availability_id>', methods=['PUT'])
+@availability_bp.route('/availability/bulk-update', methods=['PUT'])
 @jwt_required()
-def update_availability(availability_id):
+def bulk_update_availability():
     """
-    Allows hosts to update the availability entry (price, availability, blocked status)
-    only if the date is today or in the future and not already reserved.
+    Allows a host to update multiple availability records in one request.
+    Only future or today dates are eligible for update.
+    Already reserved dates are not editable.
     """
-    data = request.get_json()
     user_id = get_jwt_identity()
+    data = request.get_json()
+
+    if not data or 'property_id' not in data or 'dates' not in data:
+        return jsonify({'error': 'property_id and dates are required'}), 400
+
+    property_id = data['property_id']
+    dates_dict = data['dates']
 
     with get_db() as db:
         user = db.query(User).get(user_id)
+        if not user or user.role != 'host':
+            return jsonify({'error': 'Only hosts can update availability'}), 403
 
-        availability = db.query(Availability).get(availability_id)
-        if not availability:
-            return jsonify({'error': 'Availability not found'}), 404
+        prop = db.query(Property).filter_by(id=property_id, host_id=user.id).first()
+        if not prop:
+            return jsonify({'error': 'Property not found or not owned by user'}), 403
 
-        # Check ownership of the related property
-        prop = db.query(Property).get(availability.property_id)
-        if not prop or prop.host_id != user.id:
-            return jsonify({'error': 'Unauthorized access to this availability'}), 403
+        today = date.today()
+        update_results = []
 
-        # Disallow editing reserved dates
-        if availability.is_reserved:
-            return jsonify({'error': 'Cannot update a reserved date.'}), 400
-
-        # Disallow editing past dates
-        if availability.date < date.today():
-            return jsonify({'error': 'Cannot update past dates.'}), 400
-
-        # Validate and apply updates
-        if 'is_available' in data:
-            if not isinstance(data['is_available'], bool):
-                return jsonify({'error': 'is_available must be a boolean'}), 400
-            availability.is_available = data['is_available']
-
-        if 'is_blocked' in data:
-            if not isinstance(data['is_blocked'], bool):
-                return jsonify({'error': 'is_blocked must be a boolean'}), 400
-            availability.is_blocked = data['is_blocked']
-
-        if 'price' in data:
+        for date_str, item in dates_dict.items():
             try:
-                availability.price = float(data['price'])
-            except (ValueError, TypeError):
-                return jsonify({'error': 'Invalid price format'}), 400
+                item_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+            except ValueError:
+                update_results.append({'error': 'Invalid date format', 'date': date_str})
+                continue
+
+            if item_date < today:
+                update_results.append({'error': 'Cannot update past dates', 'date': date_str})
+                continue
+
+            availability = db.query(Availability).filter_by(
+                property_id=property_id,
+                date=item_date
+            ).first()
+
+            if not availability:
+                update_results.append({'error': 'Availability not found', 'date': date_str})
+                continue
+
+            if availability.is_reserved:
+                update_results.append({'error': 'Cannot update reserved date', 'date': date_str})
+                continue
+
+            # Apply updates
+            if 'price' in item:
+                try:
+                    availability.price = float(item['price'])
+                except ValueError:
+                    update_results.append({'error': 'Invalid price format', 'date': date_str})
+                    continue
+
+            if 'is_available' in item:
+                if not isinstance(item['is_available'], bool):
+                    update_results.append({'error': 'is_available must be boolean', 'date': date_str})
+                    continue
+                availability.is_available = item['is_available']
+
+            update_results.append({'msg': 'Availability updated', 'date': date_str})
 
         db.commit()
-        return jsonify({'msg': 'Availability updated successfully'}), 200
+        return jsonify(update_results), 200
 
 
 
