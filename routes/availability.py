@@ -109,6 +109,80 @@ def add_availability():
 
 
 
+@availability_bp.route('/availability/bulk-update', methods=['PUT'])
+@jwt_required()
+def bulk_update_availability():
+    """
+    Allows a host to update multiple availability records in one request.
+    Only future or today dates are eligible for update.
+    Already reserved dates are not editable.
+    """
+    user_id = get_jwt_identity()
+    data = request.get_json()
+
+    if not data or 'property_id' not in data or 'dates' not in data:
+        return jsonify({'error': 'property_id and dates are required'}), 400
+
+    property_id = data['property_id']
+    dates_dict = data['dates']
+
+    with get_db() as db:
+        user = db.query(User).get(user_id)
+        # Check user's roll
+        if not user or user.role != 'host':
+            return jsonify({'error': 'Only hosts can update availability'}), 403
+        # Check Ownership
+        prop = db.query(Property).filter_by(id=property_id, host_id=user.id).first()
+        if not prop:
+            return jsonify({'error': 'Property not found or not owned by user'}), 403
+
+        today = date.today()
+        update_results = []
+
+        for date_str, item in dates_dict.items():
+            try:
+                item_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+            except ValueError:
+                update_results.append({'error': 'Invalid date format', 'date': date_str})
+                continue
+
+            if item_date < today:
+                update_results.append({'error': 'Cannot update past dates', 'date': date_str})
+                continue
+
+            availability = db.query(Availability).filter_by(
+                property_id=property_id,
+                date=item_date
+            ).first()
+
+            if not availability:
+                update_results.append({'error': 'Availability not found', 'date': date_str})
+                continue
+
+            if availability.is_reserved:
+                update_results.append({'error': 'Cannot update reserved date', 'date': date_str})
+                continue
+
+            # Apply updates
+            if 'price' in item:
+                try:
+                    availability.price = float(item['price'])
+                except ValueError:
+                    update_results.append({'error': 'Invalid price format', 'date': date_str})
+                    continue
+
+            if 'is_available' in item:
+                if not isinstance(item['is_available'], bool):
+                    update_results.append({'error': 'is_available must be boolean', 'date': date_str})
+                    continue
+                availability.is_available = item['is_available']
+
+            update_results.append({'msg': 'Availability updated', 'date': date_str})
+
+        db.commit()
+        return jsonify(update_results), 200
+
+
 
 @availability_bp.route('/availability/property/<int:property_id>', methods=['GET'])
 @jwt_required()
