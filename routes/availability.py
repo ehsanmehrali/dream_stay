@@ -1,4 +1,4 @@
-from datetime import datetime, date
+from datetime import date
 
 from datetime import datetime
 from flask import Blueprint, request, jsonify
@@ -128,9 +128,10 @@ def bulk_update_availability():
 
     with get_db() as db:
         user = db.query(User).get(user_id)
+        # Check user's roll
         if not user or user.role != 'host':
             return jsonify({'error': 'Only hosts can update availability'}), 403
-
+        # Check Ownership
         prop = db.query(Property).filter_by(id=property_id, host_id=user.id).first()
         if not prop:
             return jsonify({'error': 'Property not found or not owned by user'}), 403
@@ -180,7 +181,6 @@ def bulk_update_availability():
 
         db.commit()
         return jsonify(update_results), 200
-
 
 
 
