@@ -145,7 +145,7 @@ def bulk_update_availability():
             except ValueError:
                 update_results.append({'error': 'Invalid date format', 'date': date_str})
                 continue
-
+            # Past dates not allowed
             if item_date < today:
                 update_results.append({'error': 'Cannot update past dates', 'date': date_str})
                 continue
