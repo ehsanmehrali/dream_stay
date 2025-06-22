@@ -55,4 +55,8 @@ def search_properties():
                     'location': prop.location,
                     'price_per_night': round(total_price / total_nights, 2),
                     'total_price': float(total_price),
-                    'available_from': check_i
+                    'available_from': check_in_str,
+                    'available_to': check_out_str
+                })
+
+        return jsonify(results), 200
