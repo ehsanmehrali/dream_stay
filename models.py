@@ -43,7 +43,7 @@ class Property(Base):
     description = Column(String)
     location = Column(String, nullable=False)
     host_id = Column(Integer, ForeignKey('users.id'), nullable=False)
-    is_approved = Column(Boolean, default=False)
+    is_approved = Column(Boolean, default=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Prevent duplicate storage
