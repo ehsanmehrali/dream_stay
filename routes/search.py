@@ -1,7 +1,7 @@
 
 from datetime import datetime, timedelta
 from flask import request, jsonify
-from flask_jwt_extended import jwt_required
+
 from flask import Blueprint
 
 from models import Property, Availability
