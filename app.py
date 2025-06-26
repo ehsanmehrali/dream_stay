@@ -26,6 +26,9 @@ app.register_blueprint(availability_bp)
 from routes.search import search_bp
 app.register_blueprint(search_bp)
 
+from routes.booking import booking_bp
+app.register_blueprint(booking_bp)
+
 app.config.from_object(Config)
 jwt = JWTManager(app)
 
