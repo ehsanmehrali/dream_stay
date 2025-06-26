@@ -6,3 +6,4 @@ Flask-JWT-Extended~=4.7.1
 bcrypt~=4.3.0
 # python -c "import secrets; print(secrets.token_urlsafe(64))"
 reportlab~=4.4.2
+gunicorn~=23.0.0
