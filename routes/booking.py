@@ -1,44 +1,16 @@
-import io
+
 from datetime import datetime, date, timezone
 
 from flask import Blueprint, request, jsonify, send_file
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from reportlab.pdfgen import canvas
 
-from models import User, Property, Booking
 from utils.availability import check_property_availability
+from utils.pdf_generator import generate_voucher_pdf
+from models import User, Property, Booking
 from database import get_db
 
 
 booking_bp = Blueprint('booking', __name__)
-
-
-def generate_voucher_pdf(booking, guest_info, property_):
-    buffer = io.BytesIO()
-    p = canvas.Canvas(buffer)
-
-    p.setFont("Helvetica-Bold", 14)
-    p.drawString(100, 800, "Booking Voucher")
-
-    p.setFont("Helvetica", 12)
-    p.drawString(100, 770, f"Booking ID: {booking.id}")
-    p.drawString(100, 750, f"Guest: {guest_info.get('first_name', '')} {guest_info.get('last_name', '')}")
-    p.drawString(100, 730, f"Email: {guest_info.get('email', '')}")
-    p.drawString(100, 710, f"Phone: {guest_info.get('phone', '')}")
-
-    address = guest_info.get('address', {})
-    full_address = f"{address.get('street', '')}, {address.get('city', '')}, {address.get('province', '')} - {address.get('postal_code', '')}"
-    p.drawString(100, 690, f"Address: {full_address}")
-
-    p.drawString(100, 670, f"Property: {property_.title} - {property_.location}")
-    p.drawString(100, 650, f"Check-in: {booking.check_in}")
-    p.drawString(100, 630, f"Check-out: {booking.check_out}")
-    p.drawString(100, 610, f"Total Price: ${booking.total_price}")
-
-    p.showPage()
-    p.save()
-    buffer.seek(0)
-    return buffer
 
 
 @booking_bp.route('/bookings', methods=['POST'])
