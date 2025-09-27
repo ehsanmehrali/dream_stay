@@ -1,11 +1,20 @@
 from flask import Flask
 from flask_jwt_extended import JWTManager
+from flask_cors import CORS
+import os
 
 from config import Config
 from database import init_db
 
 
 app = Flask(__name__)
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
+
+
+CORS(app, resources={r"/*": {"origins": allowed_origins}},
+  supports_credentials=False,
+  methods=["GET", "HEAD", "OPTIONS"],
+  allow_headers=["Content-Type", "Accept", "Authorization"])
 
 # auth(authentication) route
 from routes.auth import auth_bp

@@ -7,3 +7,4 @@ bcrypt~=4.3.0
 # python -c "import secrets; print(secrets.token_urlsafe(64))"
 reportlab~=4.4.2
 gunicorn~=23.0.0
+flask-cors~=6.0.1
