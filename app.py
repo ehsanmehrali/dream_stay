@@ -1,3 +1,5 @@
+from os.path import exists
+
 from flask import Flask
 from flask_jwt_extended import JWTManager
 from flask_cors import CORS
@@ -11,6 +13,8 @@ app = Flask(__name__)
 allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
 app.config.from_object(Config)
 app.config['JSON_SORT_KEYS'] = False
+
+    # os.mkdir(Config.IMAGE_UPLOAD_DIR, exist_ok=True)
 
 CORS(app, resources={r"/*": {"origins": allowed_origins}},
   supports_credentials=False,
