@@ -9,7 +9,8 @@ from database import init_db
 
 app = Flask(__name__)
 allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
-
+app.config.from_object(Config)
+app.config['JSON_SORT_KEYS'] = False
 
 CORS(app, resources={r"/*": {"origins": allowed_origins}},
   supports_credentials=False,
