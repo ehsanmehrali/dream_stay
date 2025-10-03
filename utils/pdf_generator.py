@@ -14,7 +14,7 @@ def generate_voucher_pdf(booking, guest_info, property_):
     logo_path = "static/logo.png"
     try:
         p.drawImage(ImageReader(logo_path), 50, height - 100, width=120, height=50, mask='auto')
-    except:
+    except Exception:
         pass
 
     # title

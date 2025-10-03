@@ -113,6 +113,8 @@ def search_properties():
             if not include_partial and not all_nights_available:
                 continue
             item = OrderedDict()
+            cover = next((im for im in p.images if im.is_cover), None)
+            item['cover_url'] = cover.url if cover else (p.images[0].url if p.images else None)
             item['location'] = p.location
             item['property_id'] = p.id
             item['title'] = p.title

@@ -84,7 +84,7 @@ class PropertyImage(Base):
     alt_text = Column(String(256))
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
-    property = relationship('property', back_populates='images')
+    property = relationship('Property', back_populates='images')
 
 class Availability(Base):
     """ Availability per date for a specific property (price & availability flags). """

@@ -1,4 +1,4 @@
-from flask import Flask, send_from_directory
+from flask import Flask
 from flask_jwt_extended import JWTManager
 from flask_cors import CORS
 import os
@@ -9,9 +9,14 @@ from database import init_db
 app = Flask(__name__)
 allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
 app.config.from_object(Config)
-app.config['JSON_SORT_KEYS'] = False
 
-os.mkdir(Config.IMAGE_UPLOAD_DIR, exist_ok=True)
+app.config['MAX_CONTENT_LENGTH'] = Config.IMAGE_MAX_MB * 1024 * 1024
+print("R2 ACTIVE:", Config.USE_R2, "ENDPOINT:", Config.R2_ENDPOINT, "PUBLIC:", Config.R2_PUBLIC_BASE_URL,
+          flush=True)
+if Config.USE_R2 and (not Config.R2_PUBLIC_BASE_URL or not Config.R2_BUCKET_NAME):
+    raise RuntimeError("R2 misconfigured: set R2_PUBLIC_BASE_URL and R2_BUCKET_NAME")
+
+app.config['JSON_SORT_KEYS'] = False
 
 CORS(app, resources={r"/*": {"origins": allowed_origins}},
   supports_credentials=False,
@@ -44,13 +49,7 @@ app.register_blueprint(images_bp)
 from routes.booking import booking_bp
 app.register_blueprint(booking_bp)
 
-# serve uploaded files (dev)
-@app.route('/uploads/<path:filename>')
-def uploaded_file(filename):
-    return send_from_directory(Config.IMAGE_UPLOAD_DIR, filename)
 
-
-app.config.from_object(Config)
 jwt = JWTManager(app)
 
 with app.app_context():
