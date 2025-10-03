@@ -46,6 +46,7 @@ class Property(Base):
     is_approved = Column(Boolean, default=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
+
     # Prevent duplicate storage
     __table_args__ = (
         UniqueConstraint('title', 'location', 'host_id', name='uq_title_location_host'),
@@ -57,6 +58,33 @@ class Property(Base):
     # ONE TO MANY: A property can be booked multiple times.
     bookings = relationship('Booking', back_populates='property')
 
+    #
+    images = relationship('PropertyImage', back_populates='property', cascade='all, delete-orphan', order_by='PropertyImage.sort_order')
+
+class PropertyImage(Base):
+    __tablename__ = 'property_images'
+
+    id = Column(Integer, primary_key=True)
+    property_id = Column(Integer, ForeignKey('properties.id'), nullable=False)
+    # Relative storage path/key (e.g. property/12/uuid_medium.webp)
+    storage_key = Column(String(512), nullable=False, unique=True)
+
+    # Displayable URLs (relative to IMAGE_BASE_URL)
+    url = Column(String(512), nullable=False) # Original version/medium
+    thumb_url = Column(String(512), nullable=False) # Small size
+    large_url = Column(String(512), nullable=False) # Large size
+
+    is_cover = Column(Boolean, default=False, nullable=False)
+    sort_order = Column(Integer, default=0, nullable=False)
+    width = Column(Integer)
+    height = Column(Integer)
+    bytes = Column(Integer)
+    format = Column(String(16))
+    caption = Column(String(256))
+    alt_text = Column(String(256))
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    property = relationship('Property', back_populates='images')
 
 class Availability(Base):
     """ Availability per date for a specific property (price & availability flags). """
