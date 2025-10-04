@@ -101,61 +101,54 @@ def upload_images(property_id: int):
     if user_id is None:
         return jsonify({'error': 'unauthorized'}), 401
 
-    files = _files_from_request()
+    files = request.files.getlist('files')
     if not files:
         return jsonify({'error': 'no files provided (use multipart/form-data with key "files")'}), 400
 
+    if len(files) > Config.IMAGE_MAX_COUNT:
+        return jsonify({"error": f"Too many files (max {Config.IMAGE_MAX_COUNT})"}), 400
+
+    succeeded, failed = [], []
     with get_db() as db:
-        prop, err = _ensure_owner(db, property_id, user_id)
-        if err:
-            return jsonify({'error': err[0]}), err[1]
+        prop = db.get(Property, property_id)
+        if not prop:
+            return jsonify({"error": "Property not found"}), 404
 
-        count_now = db.query(func.count(PropertyImage.id)).filter(
-            PropertyImage.property_id == property_id
-        ).scalar()
+        base_sort = (
+                        db.query(func.coalesce(func.max(PropertyImage.sort_order), -1))
+                        .filter(PropertyImage.property_id == property_id)
+                        .scalar()
+                    ) + 1
+        has_any = db.query(PropertyImage.id).filter_by(property_id=property_id).first() is not None
 
-        max_count = getattr(Config, "IMAGE_MAX_COUNT", 20)
-        if count_now + len(files) > max_count:
-            return jsonify({'error': f'max {max_count} images per property'}), 400
-
-        created = []
-        for idx, f in enumerate(files):
+        for i, f in enumerate(files):
             try:
-                meta = process_image(f, property_id)  # It saves itself on R2 or locally depending on USE_R2
+                meta = process_image(f, property_id)
+                img = PropertyImage(
+                    property_id=property_id,
+                    storage_key=meta.get("storage_key"),  # Medium version (relative) key for reference
+                    url=meta.get("url"),
+                    thumb_url=meta.get("thumb_url"),
+                    large_url=meta.get("large_url"),
+                    width=meta.get("width"),
+                    height=meta.get("height"),
+                    bytes=meta.get("bytes"),
+                    format=meta.get("format"),
+                    is_cover=False,
+                    sort_order=base_sort + i,
+                )
+                if not has_any and i == 0:
+                    img.is_cover = True
+                db.add(img)
+                db.commit()
+                succeeded.append({"id": img.id, "url": img.url})
+                has_any = True
             except Exception as e:
-                return jsonify({'error': f'file {idx+1}: {e}'}), 400
+                db.rollback()
+                failed.append({"filename": getattr(f, "filename", None), "error": str(e)})
 
-            img = PropertyImage(
-                property_id=property_id,
-                storage_key=meta['rel_medium'],  # Medium version (relative) key for reference
-                url=meta['url'],
-                thumb_url=meta['thumb_url'],
-                large_url=meta['large_url'],
-                width=meta['width'],
-                height=meta['height'],
-                bytes=meta['bytes'],
-                format=meta['format'],
-                sort_order=count_now + idx
-            )
-
-            # If the first image of this property is → cover
-            if count_now == 0 and idx == 0:
-                img.is_cover = True
-
-            db.add(img)
-            db.flush()
-
-            created.append({
-                'id': img.id,
-                'url': img.url,
-                'thumb_url': img.thumb_url,
-                'large_url': img.large_url,
-                'is_cover': img.is_cover,
-                'sort_order': img.sort_order
-            })
-
-        db.commit()
-        return jsonify(created), 201
+    status = 207 if failed and succeeded else (200 if succeeded else 400)
+    return jsonify({"succeeded": succeeded, "failed": failed}), status
 
 
 @images_bp.route('/<int:property_id>/images/<int:image_id>', methods=['PATCH'])

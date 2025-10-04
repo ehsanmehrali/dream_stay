@@ -10,7 +10,7 @@ app = Flask(__name__)
 allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
 app.config.from_object(Config)
 
-app.config['MAX_CONTENT_LENGTH'] = Config.IMAGE_MAX_MB * 1024 * 1024
+app.config['MAX_CONTENT_LENGTH'] = Config.IMAGE_MAX_COUNT * Config.IMAGE_MAX_MB * 1024 * 1024
 print("R2 ACTIVE:", Config.USE_R2, "ENDPOINT:", Config.R2_ENDPOINT, "PUBLIC:", Config.R2_PUBLIC_BASE_URL,
           flush=True)
 if Config.USE_R2 and (not Config.R2_PUBLIC_BASE_URL or not Config.R2_BUCKET_NAME):
