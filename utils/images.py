@@ -5,25 +5,28 @@ from utils.r2 import r2_client
 
 def _save_variant_to_bytes(img: PILImage.Image, max_px: int):
     out = img.copy()
-    out.thumbnail((max_px, max_px))
+    out.thumbnail((max_px, max_px), resample=Image.Resampling.LANCZOS)
     buf = io.BytesIO()
-    out.save(buf, format='WEBP', method=6, quality=85)
+    out.save(buf, format="WEBP", method=5, quality=82, optimize=True)
     data = buf.getvalue()
+    buf.close()
+    out.close()
     return data, out.width, out.height, len(data)
 
-def _strip_exif(img: PILImage.Image) -> PILImage.Image:
-    data = list(img.getdata())
-    clean = PILImage.new(img.mode, img.size)
-    clean.putdata(data)
-    return clean
+def _normalize_image(img: PILImage.Image) -> PILImage.Image:
+    img = ImageOps.exif_transpose(img)
+    if "exif" in img.info:
+        img.info.pop("exif", None)
+    return img
 
 def process_image(file_storage, property_id: int):
     if not Config.USE_R2:
         raise RuntimeError("R2 is required; set USE_R2=true")
 
+
     img = Image.open(file_storage.stream)
     img = ImageOps.exif_transpose(img).convert('RGB')
-    img = _strip_exif(img)
+    img = _normalize_image(img)
 
     uid = uuid.uuid4().hex
     base_key = f"property/{property_id}/{uid}"

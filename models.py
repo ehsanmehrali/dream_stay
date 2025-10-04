@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean, Date, Enum, Numeric, UniqueConstraint
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean, Date, Enum, Numeric, UniqueConstraint, Index
 from sqlalchemy.orm import declarative_base, relationship
 
 
@@ -64,6 +64,7 @@ class Property(Base):
 class PropertyImage(Base):
     __tablename__ = 'property_images'
 
+
     id = Column(Integer, primary_key=True)
     property_id = Column(Integer, ForeignKey('properties.id'), nullable=False)
     # Relative storage path/key (e.g. property/12/uuid_medium.webp)
@@ -83,6 +84,8 @@ class PropertyImage(Base):
     caption = Column(String(256))
     alt_text = Column(String(256))
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (Index('ix_property_images_prop_sort', 'property_id', 'sort_order'),)
 
     property = relationship('Property', back_populates='images')
 
