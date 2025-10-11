@@ -20,7 +20,7 @@ app.config['JSON_SORT_KEYS'] = False
 
 CORS(app, resources={r"/*": {"origins": allowed_origins}},
   supports_credentials=False,
-  methods=["GET", "HEAD", "OPTIONS"],
+  methods=["GET", "HEAD", "OPTIONS","POST"],
   allow_headers=["Content-Type", "Accept", "Authorization"])
 
 # auth(authentication) route
