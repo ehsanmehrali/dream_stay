@@ -69,23 +69,25 @@ def login():
     with get_db() as db:
         user = db.query(User).filter_by(email=email).first()
 
-        if not user:
-            return jsonify({
-                'error': 'Invalid credentials'
-            }), 401
+        if not user or not bcrypt.checkpw(password.encode('utf-8'), user.password_hash.encode('utf-8')):
+            return jsonify({'error': 'Invalid credentials'}), 401
 
-        if not bcrypt.checkpw(password.encode('utf-8'), user.password_hash.encode('utf-8')):
-            return jsonify({
-                'error': 'Invalid credentials'
-            }), 401
-
+        expires_delta = datetime.timedelta(hours=1)
         access_token = create_access_token(
             identity=str(user.id),
             additional_claims={"id": user.id, "role": user.role},
-            expires_delta=datetime.timedelta(hours=2)
+            expires_delta=expires_delta
         )
 
     return jsonify({
-        'access_token': access_token,
-        'role': user.role
-    }), 200
+            'access_token': access_token,
+            'token_type': 'Bearer',
+            'expires_in': int(expires_delta.total_seconds()),
+            'user': {
+                'id': user.id,
+                'role': user.role,
+                'email': user.email,
+                'first_name': user.first_name,
+                'last_name': user.last_name
+            }
+        }), 200
