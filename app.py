@@ -53,6 +53,9 @@ app.register_blueprint(images_bp)
 from routes.booking import booking_bp
 app.register_blueprint(booking_bp)
 
+from routes.destinations import destinations_bp
+app.register_blueprint(destinations_bp)
+
 
 jwt = JWTManager(app)
 
